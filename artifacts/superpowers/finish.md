@@ -1,32 +1,40 @@
-# Build Finish Summary — FEAT-00002
+# /finish Summary — FEAT-00007: Headless CLI prompt input and final-response output
 
-## Outcome
-Implemented fail-fast configuration validation (`internal/config`) and the safe Filesystem MCP process policy (`internal/policy`), and wired config validation into the `cmd/server` composition root without spawning or initializing MCP.
+## Status
+- DEV: ✅ done (quality gates green)
+- TEST: ✅ passed (TEST-00065..71, 7 scenarios)
+- QC: ✅ approved
+- Registry: `docs/REGISTRY.md` FEAT-00007 → **DONE**
 
-## Steps Completed
-1. `internal/config` — parse & validate the §4 env contract; aggregated field-level errors, never echoes the API secret.
-2. `internal/policy` — bare-executable allowlist (no separators/metacharacters), canonical root containment (`filepath.Abs`+`EvalSymlinks`), JSON-array-of-strings argv contract.
-3. `cmd/server` — `run` loads/validates config first; returns user-safe diagnostic; `main` exits non-zero. No MCP spawn (FEAT-00003).
-4. Quality gates — `gofmt`, `go test ./...`, `go vet ./...` all pass.
+## What shipped
+- `cmd/server/main.go`:
+  - `readPromptFromStdin(r io.Reader) (string, error)` — whole-stream read, whitespace-trimmed; empty stream → `""` (bootstrap path).
+  - `isTerminal(r io.Reader)` — character-device check via `*os.File` type assertion; injected readers/pipes are never terminals, keeping the seam injectable (A1, Windows TTY risk mitigated).
+  - `run` signature changed to `run(out io.Writer, stdin io.Reader, args ...string)`; `main()` passes `os.Stdin`. Empty `--prompt` + non-TTY stdin → read one prompt; non-empty → agent loop, empty → bootstrap (A1/A2).
+  - Final answer printed via `Fprintln(out, answer)` (A3); diagnostics stay on stderr via `main()`'s `fmt.Fprintln(os.Stderr, err)` + `os.Exit(1)`; no tool logs on stdout.
+- `cmd/server/main_test.go`:
+  - New: `readPromptFromStdin` unit tests (trim, empty, read-error), `TestRun_EmptyStdin_Bootstraps`, `TestRun_NonEmptyStdin_TriggersLoop` (deterministic fail-fast MCP spawn, no real Gemini/MCP).
+  - Existing bootstrap/secret/flag tests updated to the new stdin seam — contracts unchanged.
 
-## Files changed
-- `internal/config/config.go`, `internal/config/config_test.go`
-- `internal/policy/policy.go`, `internal/policy/policy_test.go`
-- `cmd/server/main.go`, `cmd/server/main_test.go`
-- `artifacts/superpowers/execution.md`
-
-## Verification commands
-- `go test ./...` → PASS
+## Verification evidence
+- `go test ./...` → PASS (all 7 packages)
 - `go vet ./...` → PASS
-- `go run ./cmd/server` (no env) → user-safe `invalid configuration: ...` + exit 1
+- `gofmt -l .` → empty
+- Manual E2E probe: empty piped stdin → `bootstrap complete`, EXIT=0; non-empty piped stdin + unresolvable MCP → EXIT=1, diagnostic on stderr only, empty stdout (A4: no secret/leak, correct exit code).
 
-## Review Pass
-- 🔴 Blockers: none
-- 🟠 Majors: none
-- 🟡 Minors: config upper-bounds are validated only as positive (no explicit max cap); `HOST_LOG_LEVEL` value not validated beyond defaulting to `info`.
-- ⚪ Nits: `MCP_ALLOWED_ROOTS` comma-split does not support comma inside a path.
+## Sign-off trail
+- Plan: `artifacts/superpowers/plan.md` (user APPROVED)
+- Execution: `artifacts/superpowers/execution.md`
+- Review/QC: `artifacts/superpowers/review.md` (QC APPROVED, no blockers)
+- Tests: `tests/TEST-00007.md` + `tests/REPORTS.md`
+
+## Review pass (final)
+- 🔴 Blockers: none.
+- 🟠 Majors: none.
+- 🟡 Minors: `isTerminal` treats a `Stat` error as "not a terminal" (reads stdin) — safe default, no hang.
+- ⚪ Nits: git branch is `feature/FEAT-00003-stdio-mcp-client-lifecycle` — FEAT-00007 changes uncommitted in working tree.
 
 ## Follow-ups
-- FEAT-00003: spawn/probe the Filesystem MCP process using `internal/policy` command/roots (reintroduces `mcp-go`/`genai` imports → then `go mod tidy`).
-- Consider adding a symlink-escape integration test where the platform permits symlink creation.
-- Suggested: `/test cases FEAT-00002` to author formal test cases from these acceptance criteria.
+- [SUGGEST] Create `feature/FEAT-00007-headless-cli-prompt-stdin` and commit the working-tree changes before merging (git-workflow §1).
+- [Manual] Full end-to-end validation with a live Filesystem MCP server + real Gemini API key (covered separately by opt-in QA-00003 E2E).
+- Task is **DONE** in Registry; further sprint items: QA-00001..03, DEVOPS-00001, DOC-00001, FEAT-00008/09 (out of scope).

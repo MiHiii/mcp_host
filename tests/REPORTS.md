@@ -49,3 +49,203 @@
 - **Full suite:** `go test ./...` all PASS.
 
 **Result:** TEST-00004 through TEST-00019 all PASS. No defects found.
+
+---
+
+## FEAT-00003 - Stdio MCP Client Lifecycle
+
+**Executed:** 2026-08-06 | **By:** Tester | **Environment:** Local Go toolchain (go1.26.5 windows/amd64)
+
+### Unit + integration (`go test ./internal/mcpclient -v -count=1`)
+
+| ID | Scenario | Test | Status | Evidence |
+|---|---|---|---|---|
+| TEST-00020 | Happy path — initialize/list/call | `TestStdioClient_HappyPath_InitializeListCall` | PASS | Initialize ok; 1 tool `echo`; call content `ok`, IsError false |
+| TEST-00021 | Constructor rejects nil policy / zero timeout | `TestStdioClient_InvalidPolicyAndTimeoutArg` | PASS | Both return errors |
+| TEST-00022 | Child crash → ErrProcessExit + idempotent Close | `TestStdioClient_Crash_ReturnsTypedErrorAndCloseIsSafe` | PASS | `errors.Is(ErrProcessExit)`; second Close nil |
+| TEST-00023 | Never-responding child → ErrTimeout (200ms) | `TestStdioClient_Timeout_ReturnsErrTimeout` | PASS | `errors.Is(ErrTimeout)`; Close clean |
+| TEST-00024 | Server protocol error → ErrInvalidResponse | `TestStdioServer_InvalidResponse_ReturnsErrInvalidResponse` | PASS | `errors.Is(ErrInvalidResponse)` |
+| TEST-00025 | Close leaves no orphan child | `TestStdioServer_Close_LeavesNoOrphan` | PASS | exit-marker written within 3s |
+| TEST-00026 | Typed errors unwrap to sentinels | `TestError_UnwrapMatchesSentinel` | PASS | All 5 Kinds; never ErrTimeout |
+| TEST-00027 | Error messages user-safe (no path/secret) | `TestError_MessageIsUserSafe`, `TestTimeoutError_IsErrTimeout` | PASS | No `\`, no `secret`/`token`; operation named |
+
+**Full suite:** `go test ./...` all PASS. Coverage `internal/mcpclient` = **86.4%** (≥ 80% per TDD §11).
+
+**Result:** TEST-00020 through TEST-00027 all PASS (8 scenarios). No defects found.
+
+---
+
+## FEAT-00004 - MCP JSON Schema → Gemini Function-Declaration Mapper
+
+**Executed:** 2026-08-06 | **By:** Tester | **Environment:** Local Go toolchain (go1.26.5 windows/amd64)
+
+### Unit (`go test ./internal/mapping -v -count=1`, 28 subtests)
+
+| ID | Scenario | Test | Status | Evidence |
+|---|---|---|---|---|
+| TEST-00028 | Full supported subset lossless | `TestMapTools_FullSupportedSubsetLossless` | PASS | DeepEqual exact match (string/integer/number/boolean/array/items/enum[]any+[]string/nested+root required) |
+| TEST-00029 | No-arg tool → empty schema | `TestMapTools_emptyPropertiesNoArgTool` | PASS | Empty non-nil Parameters.Properties |
+| TEST-00030 | Unsupported type rejected | `TestMapTools_rejectsUnsupportedType` (5 cases) | PASS | `errors.Is` matches; tool+field in msg |
+| TEST-00031 | Nested unsupported carries full path | `TestMapTools_rejectsNestedUnsupportedWithPath` | PASS | `config.inner.x` present |
+| TEST-00032 | Malformed schema rejected | `TestMapTools_rejectsMalformedPropertySchema` (6 cases) | PASS | Tool name present |
+| TEST-00033 | Non-string enum member rejected | `TestMapTools_rejectsNonStringEnumMember` | PASS | Tool + field path |
+| TEST-00034 | Duplicate tool names rejected | `TestMapTools_rejectsDuplicateToolNames` | PASS | `ErrDuplicateName` |
+| TEST-00035 | Cyclic schema guarded | `TestMapTools_recursionGuardOnCyclicSchema` | PASS | No stack overflow |
+| TEST-00036 | Over-deep nesting guarded | `TestMapTools_recursionGuardDeepNesting` | PASS | Error at depth limit |
+
+**Full suite:** `go test ./...` all PASS. Coverage `internal/mapping` = **83.1%** (≥ 80% per TDD §11).
+
+**Result:** TEST-00028 through TEST-00036 all PASS (9 scenarios). No defects found.
+
+---
+
+## FEAT-00005 - Gemini Provider Adapter and Conversation Mapping
+
+**Executed:** 2026-08-06 | **By:** Tester | **Environment:** Local Go toolchain (go1.26.5 windows/amd64)
+
+### Unit (`go test ./internal/llm -v -count=1`, 20 tests)
+
+| ID | Scenario | Test | Status | Evidence |
+|---|---|---|---|---|
+| TEST-00037 | User text → genai content | `TestToGemContentUserText` | PASS | Role user + text part |
+| TEST-00038 | Model tool call → FunctionCall part | `TestToGemContentModelFunctionCall`, `TestToolCallToPart` | PASS | Name + args preserved |
+| TEST-00039 | User tool result → FunctionResponse | `TestToGemContentUserToolResult`, `TestToolResultToPart` | PASS | Name + response preserved |
+| TEST-00040 | Mixed parts preserved in order | `TestToGemContentMixedParts` | PASS | text + FunctionCall + FunctionResponse |
+| TEST-00041 | Response text extracted | `TestResponseToResponseText` | PASS | Text populated, no ToolCalls |
+| TEST-00042 | Function calls surfaced as ToolCalls | `TestResponseToResponseFunctionCall`, `TestResponseToResponseMixed` | PASS | Name + args extracted |
+| TEST-00043 | Nil/empty response handled | `TestResponseToResponseEmptyCandidates`, `TestResponseToResponseNil` | PASS | Empty Response, no panic |
+| TEST-00044 | Generate happy path (text) | `TestGenerateTextOnly` | PASS | Text returned |
+| TEST-00045 | Generate surfaces function calls | `TestGenerateToolCall` | PASS | ToolCalls populated |
+| TEST-00046 | Deadline → ErrTimeout | `TestGenerateTimeoutMapsToErrTimeout` | PASS | `errors.Is(ErrTimeout)`; no leak |
+| TEST-00047 | Caller cancel passes through | `TestGenerateContextCancelPassesThrough` | PASS | NOT ErrTimeout |
+| TEST-00048 | Provider error → ErrProvider | `TestGenerateProviderError` | PASS | `errors.Is(ErrProvider)`; user-safe |
+| TEST-00049 | Tool config for named tools only | `TestGenerateBuildsToolConfigForNamedTools`, `TestGenerateNoToolsWhenNoneNamed` | PASS | Order preserved; empty → no tools |
+| TEST-00050 | Contents built for request | `TestGenerateBuildsContents` | PASS | 2 contents in order |
+
+**Full suite:** `go test ./...` all PASS. Coverage `internal/llm` = **90.4%** (≥ 80% per TDD §11).
+
+**Result:** TEST-00037 through TEST-00050 all PASS (14 scenarios). No defects found.
+
+---
+
+## FEAT-00006 - Bounded Agentic Loop, Tool-Result Context, Cancellation, Error Handling
+
+**Executed:** 2026-08-06 | **By:** Tester | **Environment:** Local Go toolchain (go1.26.5 windows/amd64)
+
+### Unit (`go test ./internal/agent -v -count=1`, 37 tests)
+
+| ID | Scenario | Test | Status | Evidence |
+|---|---|---|---|---|
+| TEST-00051 | Final text returned directly | `TestRun_returnsFinalTextDirectly` | PASS | LLM called once, text returned |
+| TEST-00051b | Single tool call then final text (AC3) | `TestRun_singleToolCallThenFinalText` | PASS | Tool executed, result fed back, final text |
+| TEST-00052 | Multiple tool calls sequential (D4) | `TestRun_multipleToolCallsInOneTurn` | PASS | Both executed in order |
+| TEST-00053 | Iteration limit → ErrIterationLimit | `TestRun_iterationLimit` | PASS | `errors.Is(ErrIterationLimit)` |
+| TEST-00054 | Unknown tool → safe result | `TestRun_unknownToolBecomesSafeResult` | PASS | MCP not called; action unavailable |
+| TEST-00055 | Invalid args → safe result | `TestRun_invalidArgsBecomesSafeResult` | PASS | MCP not called; validation message |
+| TEST-00056 | MCP failure → bounded result, loop continues (AC4) | `TestRun_mcpFailureBecomesBoundedResult` | PASS | No crash; final text reached |
+| TEST-00057 | Cancellation propagates + terminates (D3) | `TestRun_cancellationPropagatesToToolAndTerminates`, `TestRun_cancellationMidLoopStops` | PASS | `context.Canceled`; ctx reached tool |
+| TEST-00058 | Cancel overrides bounded tool error | `TestRun_cancellationMidLoopOverridesBoundedToolError` | PASS | Canceled returned, not bounded result |
+| TEST-00059 | Result truncated with marker | `TestRun_resultIsTruncated` | PASS | `...[truncated]` present; ≤ cap |
+| TEST-00060 | Secret content not in output | `TestRun_secretContentNotInOutput` | PASS | Sentinel absent |
+| TEST-00061 | Validator happy path | `TestValidateArgs_ok`, `..._nestedObject`, `..._arrayItems`, `..._numberNumericKinds` | PASS | Valid args pass |
+| TEST-00062 | Validator negative/boundary | `TestValidateArgs_missingRequired`, `_wrongType`, `_enumMismatch`, `_integerEnumMatchesFloat`, `_requiredAsJSONDecodedArray`, `_enumAsStringSlice`, `_emptySchemaNoArgs` | PASS | All invalid rejected; edge cases correct |
+| TEST-00063 | Options validation | `TestNew_rejectsInvalidOptions`, `TestNew_acceptsValidOptions` | PASS | Nil/invalid rejected; valid accepted |
+| TEST-00064 | Errors user-safe + unwrap sentinels | `TestError_MessageDoesNotLeakCause`, `TestError_UnwrapPreservesSentinel`, `TestIterationLimitError_IsSentinel`, `TestClassifyGenerateError` | PASS | No cause leak; errors.Is works |
+
+**Result-bounding units:** `TestBoundedResult_noTruncation/truncationMarker/nilResult`, `TestErrorResult_noRawErrorLeak/deadlineMapping/cancelledMapping`, `TestMessageResult` — all PASS.
+
+**Architecture gate:** `internal/agent` direct imports = only `internal/llm` (neutral); no `genai`/`mcp-go` (verified via source grep + `go list -deps`). AC5 + ADR-0001 D2 confirmed.
+
+**Full suite:** `go test ./...` all PASS. Coverage `internal/agent` = **91.5%** (≥ 80% per TDD §11).
+
+**Result:** TEST-00051 through TEST-00064 all PASS (16 scenarios). No defects found.
+
+---
+
+## FEAT-00007 - Headless CLI Prompt Input and Final-Response Output
+
+**Executed:** 2026-08-06 | **By:** Tester | **Environment:** Local Go toolchain (go1.26.5 windows/amd64)
+
+### Unit + CLI (`go test ./cmd/server -v -count=1` + built binary probe)
+
+| ID | Scenario | Test / Probe | Status | Evidence |
+|---|---|---|---|---|
+| TEST-00065 | Non-empty piped stdin triggers the loop path (AC2) | `TestRun_NonEmptyStdin_TriggersLoop` | PASS | `start MCP client: ...` error proves loop path; no bootstrap on stdout |
+| TEST-00066 | Empty stdin → bootstrap, exit 0 (AC3) | `TestRun_EmptyStdin_Bootstraps` + binary probe `"" \| mcp-host.exe` | PASS | Exact bootstrap line; exit=0 |
+| TEST-00067 | `--prompt` path unchanged (AC1) | Existing dispatch + build | PASS | Flag path unchanged |
+| TEST-00068 | Prompt trimmed of whitespace (boundary) | `TestReadPromptFromStdin_NonEmpty_ReturnsTrimmedPrompt` | PASS | `"  list files\n"` → `"list files"` |
+| TEST-00069 | Stdin read error surfaced (AC4) | `TestReadPromptFromStdin_ReadError_IsSurfaced` | PASS | Non-nil error, no silent fallback |
+| TEST-00070 | Failure → stderr + exit non-zero, no leak (AC4) | Binary probe `"list files" \| mcp-host.exe` | PASS | exit=1; `start MCP client:` on stderr; no secret |
+| TEST-00071 | Regression - existing bootstrap/secret/flag tests | `TestRun_WritesSafeBootstrapStatus`, `TestRun_SmokeUnconfiguredInvocationEndsCleanly`, `TestRun_InvalidConfigDoesNotLeakSecret`, `TestRun_FlagParseErrorReturnsCleanError` | PASS | All unchanged and green |
+
+**Full suite:** `go test ./... -count=1` all PASS (7 packages). Coverage `cmd/server` = **53.6%**.
+
+**Result:** TEST-00065 through TEST-00071 all PASS (7 scenarios). No defects found.
+
+---
+
+## FEAT-00008 Gateway Verification (TEST-00009)
+
+**Executed:** 2026-08-07 | **By:** Tester | **Environment:** Local Go toolchain (go1.26.5 windows/amd64)
+
+### Acceptance criteria GW1..GW9
+
+| GW | Criterion | Status | Evidence | Notes |
+|---|---|---|---|---|
+| GW1 | Valid token → SSE `start`…`final` with CLI-equivalent answer | ✅ PASS | `TestChatAuthOK` (`server_test.go`) | 200 + `text/event-stream`; first event `start`, last `final` = `"the answer"`. Final text originates from the `Handler` seam = same agent output the CLI would produce (GW7). |
+| GW2 | Missing/invalid token → 401 JSON, no SSE | ✅ PASS | `TestChatUnauthorized` + live curl | Live: no token → 401. No SSE frame emitted. |
+| GW3 | Malformed body → 400; empty prompt → 422; no SSE | ✅ PASS | `TestChatBadRequest`, `TestChatEmptyPrompt` + live curl | Live `{not-json`→400, `{"prompt":"   "}`→422. See discrepancy note below. |
+| GW4 | Tool progress interleaved as `stream` before `final` | ✅ PASS | `TestChatStreamsToolThenFinal` + `TestRun_emitsToolEventsThenFinal` (agent) | HTTP layer maps events→stream; agent seam emits `start,tool(start),tool(result),...,final` in order. |
+| GW5 | Client disconnect cancels agent + closes MCP child (no orphan) | ✅ PASS | `TestChatClientDisconnectCancelsHandlerAndStreamsCancelled` + `mcpclient` orphan test + runner `defer Close` | Disconnect cancels handler ctx (polled ≤2s for async propagation); child-close via runner `defer client.Close()` + `TestStdioServer_Close_LeavesNoOrphan`. |
+| GW6 | Post-`start` MCP failure → `error`; process recovers | ✅ PASS | `TestChatHandlerErrorIsStreamed` + `TestChatSurvivesAfterStreamedError` | Req1 → `error`; req2 same server → 200 `final`. MCP typed failures in mcpclient suite. |
+| GW7 | `cmd/server` CLI behavior unchanged | ✅ PASS | `go test ./...` (all 10 pkgs ok) | Full suite green after Phase 1 observer seam. |
+| GW8 | HTTP-layer tests SDK-free (`internal/server` no mcp-go/genai) | ✅ PASS | source grep of `internal/server` tests | Imports stdlib only. |
+| GW9 | Concurrent requests independent MCP lifecycles | ✅ PASS | `TestChatConcurrentRequestsIndependentLifecycle` | 4 concurrent requests isolated; `maxActive≥2` proves overlap. |
+
+### New tests added (gap closure)
+
+| Test | Package | Covers |
+|---|---|---|
+| `TestRun_emitsToolEventsThenFinal` | internal/agent | GW4 real emission seam order |
+| `TestRun_observerPanicRecovered` | internal/agent | ADR-00006 observer panic safety |
+| `TestChatClientDisconnectCancelsHandlerAndStreamsCancelled` | internal/server | GW5 disconnect→cancel propagation |
+| `TestChatSurvivesAfterStreamedError` | internal/server | GW6 process survives post-`start` error |
+| `TestChatConcurrentRequestsIndependentLifecycle` | internal/server | GW9 concurrent independent lifecycles |
+
+### Verdict
+
+- `go test ./... -count=1` → PASS (10 packages `ok`).
+- `go vet ./...` → clean.
+- Live gateway (built `./cmd/gateway`, `:8080`): `/healthz` 200 `{"status":"ok"}`; `/v1/chat` no-token 401; `{not-json` 400; `{"prompt":"   "}` 422.
+
+**GW4/GW5/GW6/GW9 now fully automated.** **Result:** GW1–GW9 all PASS (9/9), 0 FAIL, 0 PARTIAL.
+
+### Reported observation (no silent fix)
+
+- **GW3 / spec deviation (Low).** `docs/specs/api/gateway.md` distinguishes *missing*
+  `prompt` → `400 VALIDATION_FAILED` vs *empty/whitespace* → `422 INVALID_CONTENT`.
+  **RESOLVED 2026-08-07 (QC/Dev decision):** `server.go` now uses a `*string` prompt, so
+  missing field → `400 VALIDATION_FAILED`, empty/whitespace → `422 INVALID_CONTENT`,
+  malformed → `400 INVALID_FORMAT`. Added `TestChatMissingPromptField`; full
+  `internal/server` test package passes.
+
+---
+
+## QC Sign-off — FEAT-00008 (2026-08-07, QC)
+
+**Audit scope:** `internal/agent` observer seam (ADR-00006), `internal/server` HTTP layer,
+`internal/runner`, `internal/config` GATEWAY_* keys, `cmd/gateway`, `cmd/server` invariance.
+
+| Check | Result |
+|-------|--------|
+| `go build ./...` | ✅ PASS |
+| `go vet ./...` | ✅ PASS (clean) |
+| `go test ./... -count=1` | ✅ PASS (10 packages) |
+| GW1–GW9 acceptance criteria | ✅ 9/9 PASS (TEST-00009) |
+| `cmd/server` CLI unchanged (GW7) | ✅ PASS — bootstrap output identical |
+| HTTP layer SDK-free (GW8) | ✅ PASS — `internal/server` imports stdlib only |
+| Spec deviation GW3 | ✅ FIXED + regression-tested |
+| No Blocker / unaddressed Major | ✅ none found |
+| Secret handling | ✅ no secrets in code, config, logs, or events |
+
+**Decision:** **QC APPROVE.** FEAT-00008 + sub-tasks FEAT-00010..00014 signed off. No blockers remaining.

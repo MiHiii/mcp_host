@@ -1,45 +1,47 @@
-# Brainstorm - FEAT-00001
+# Brainstorm — FEAT-00015: Next.js UI + token proxy
+
+**Phase:** `/think` (Clarify) — Flow 1 "New Feature"
+**Task ID:** FEAT-00015
+**Date:** 2026-08-07
+**Status:** Clarified (decisions locked by user) → next: `/architect design FEAT-00015`
 
 ## Goal
 
-Establish a clean, compiling Go foundation for the MCP Host: the module and approved baseline dependencies, a `cmd/server` composition root, and repository structure that lets later tasks add configuration, MCP, LLM, policy, and agent implementations behind the documented boundaries.
+Deliver a browser UI that lets a user chat with the MCP-powered agent through the
+authenticated `POST /v1/chat` SSE endpoint, plus a server-side token proxy so the
+`GATEWAY_API_TOKEN` never reaches the browser bundle (ADR-00004).
 
 ## Constraints
 
-- Do not implement configuration validation, MCP lifecycle, Gemini integration, agent behavior, or final prompt handling; those belong to `FEAT-00002` through `FEAT-00007`.
-- `cmd/server` may depend on `internal/*`; future `internal/agent` must not depend directly on MCP or Gemini SDKs.
-- The Go version and dependencies must remain compatible with the declared technical design.
-- The composition root must avoid printing secret-derived state or pretending that unimplemented integrations are operational.
-- Implementation is prohibited until a detailed `/plan` is explicitly approved.
+- Gemini token / `Authorization` header must **never** appear in the browser bundle.
+- Must consume the **frozen** FEAT-00008 contract (`start → stream* → final|error`, `id:`);
+  no contract changes.
+- `cmd/server`, `internal/agent`, `internal/server` remain unchanged; UI is **additive**.
+- No user model / auth on the UI itself in MVP.
 
-## Known Context
+## Decisions (user-locked 2026-08-07)
 
-- `docs/REGISTRY.md` defines `FEAT-00001` as P0/S1: bootstrap Go module, dependency baseline, and CLI composition root.
-- The technical design in `docs/tdd/MCP_HOST_TDD.md` already defines the module boundaries and composition-root responsibility.
-- The current repository contains `go.mod`, `go.sum`, `.env.example`, and a placeholder `cmd/server/main.go`; no `internal/*` packages or tests exist yet.
-- The registry marks DEV complete, while `artifacts/superpowers/execution.md` records a broad "Transport Layer" setup. This Flow 1 run must establish concrete verification evidence before later test and QC phases can close the task.
+| # | Decision | Choice |
+|---|----------|--------|
+| 1 | Repo layout | **`web/` subdir inside this monorepo** (Next.js) |
+| 2 | UI scope MVP | **Chat thread + tool-interaction + error display** |
+| 3 | SSE consumption | **Proxy via Next.js route handler (fetch-stream)**; browser `EventSource` NOT used (cannot POST body) |
+| 4 | UI auth | **Open access** (anyone reaching the app can chat; token lives only on the Go gateway + Next.js server) |
 
 ## Risks
 
-- Adding provider or transport behavior during bootstrap would overlap later feature tasks and make interfaces harder to test.
-- Importing concrete MCP or Gemini libraries in domain packages would violate the dependency boundary.
-- A placeholder executable can falsely report readiness while no configuration or protocol behavior exists.
-- Dependency version drift may make the documented Go version or planned adapters unavailable.
+- **Token leakage** into client bundle → STRIDE review at QC.
+- **SSE buffering** by dev server / proxies → use `ReadableStream` passthrough, `Cache-Control: no-cache`.
+- **Toolchain burden** — new Node deps, `package.json`/lockfile, TS build; existing `go build`/`go vet` gates don't cover it (add a JS/TS gate in CI).
+- **Scope creep** — MVP must stay: single chat thread + tool/error visibility only.
 
-## Options
+## Acceptance criteria (draft, to be finalized by BA)
 
-1. Retain the current placeholder executable and only verify that dependencies compile.
-2. Make `cmd/server` a minimal composition root that delegates to a small application boundary, leaving all runtime behavior for later features.
-3. Build configuration, MCP client, and Gemini wiring now to prove an end-to-end startup path.
+- UI: user enters prompt, sees live SSE stream, final answer, tool events, and streamed errors.
+- Token never in bundle (STRIDE-verified).
+- Gateway contract unchanged; works against existing `POST /v1/chat`.
 
 ## Recommendation
 
-Use option 2. Keep the foundation deliberately thin: establish the intended package structure and a deterministic composition-root boundary, with tests or compile checks that demonstrate the baseline. This respects the task boundary and leaves configuration and adapters to their assigned follow-on tasks. No new architecture design is required because `docs/tdd/MCP_HOST_TDD.md` already defines this durable structure.
-
-## Acceptance Criteria
-
-- The repository remains a valid Go module using the Go version and baseline dependencies approved in the TDD.
-- `cmd/server` is the CLI composition root and does not embed MCP protocol, Gemini, configuration-validation, or agent-loop behavior assigned to later tasks.
-- Package structure is ready for the documented `internal/config`, `internal/mcpclient`, `internal/llm`, `internal/agent`, and `internal/policy` boundaries without creating speculative implementations.
-- The executable has deterministic, user-safe bootstrap behavior and does not report unavailable integrations as initialized.
-- `go test ./...` and `go vet ./...` pass after implementation.
+**Approved.** Proceed to `/architect design FEAT-00015` to produce TDD + ADR for the
+`web/` workspace, the fetch-stream proxy route, TS toolchain, and CI gate. No code until `/plan` APPROVED.
