@@ -286,3 +286,42 @@
 | Secret handling | PASS | `.env` git-ignored; `.env.example` placeholders only |
 
 **Result:** FEAT-00015 gates + live E2E passed. Remaining formal sign-off: /qc.
+
+---
+
+## FEAT-00021 - Web Threads + History Cache + Input-Token Reduction
+
+**Executed:** 2026-08-07 | **By:** Tester + Dev | **Environment:** Local (Node v24, Go 1.26.5)
+
+### Unit suite (web/lib/threads + web/lib/chat/compaction)
+
+| ID | Scenario | Status | Evidence |
+|---|---|---|---|
+| FEAT-00022 | Thread store: create / switch / archive / rehydrate / corrupt-JSON recovery | PASS | `store.test.ts` 7 tests |
+| FEAT-00022 | Eviction caps (MAX_THREADS, MAX_MESSAGES_PER_THREAD) | PASS | `store.test.ts` |
+| AC-10 | Thread cache holds no tokens / Authorization headers / gateway URL | PASS | `store.test.ts` raw-storage assertion |
+| FEAT-00023 | Compaction boundary (window, window+1, empty, summary) | PASS | `compaction.test.ts` |
+| AC-3 | Compaction invariant: `compacted <= full` always; strictly smaller when compression wins | PASS | `compaction.test.ts` (guard for window+1) |
+| AC-3 | Growth bounded: 1000/100000 messages stay under window+summary bound | PASS | `compaction.test.ts` |
+
+### web/ gate suite
+
+| Gate | Status | Evidence |
+|---|---|---|
+| `npm run typecheck` | PASS | exit 0 |
+| `npm run lint` | PASS | 0 errors (fixed 2 pre-existing set-state-in-effect) |
+| `npm test` | PASS | 56 tests, 6 files |
+| `npm run build` | PASS | `next build` exit 0 |
+| `npm run audit:token` | PASS | no token-like value in client bundle |
+
+### Spec-compliance audit (QC scope)
+
+| Check | Status | Evidence |
+|---|---|---|
+| Go tree untouched (AC-7/AC-9) | PASS | `go test ./...` green; no cmd/internal changes |
+| Contract unchanged (AC-9) | PASS | `POST /api/chat` still `{prompt}`; compaction folds into prompt client-side |
+| No Blocker / unaddressed Major | PASS | none found |
+
+**Result:** FEAT-00021 gates + unit suite passed (56 tests). Remaining: live E2E + formal sign-off via /qc.
+
+

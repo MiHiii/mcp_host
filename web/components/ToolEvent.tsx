@@ -21,66 +21,66 @@ export function ToolEvent({ tool }: { tool: ToolEventData }) {
   const isRunning = tool.status === "start";
 
   return (
-    <div className="my-1.5 overflow-hidden rounded-lg border border-slate-800/90 bg-slate-900/60 backdrop-blur-xs transition-all hover:border-slate-700/80">
+    <div className="my-1.5 overflow-hidden rounded-lg border border-neutral-200 bg-white transition-all hover:border-neutral-300">
       {/* Interactive Header Row */}
       <button
         type="button"
         onClick={() => setIsExpanded((prev) => !prev)}
-        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-mono text-left select-none hover:bg-slate-800/40 transition-colors focus:outline-none"
+        className="flex w-full items-center gap-2.5 px-3 py-2 text-xs font-mono text-left select-none hover:bg-neutral-50 transition-colors focus:outline-none"
       >
-        <div className="flex items-center justify-center text-slate-400">
+        <div className="flex items-center justify-center text-neutral-400">
           {isRunning ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin text-amber-400" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin text-neutral-500" />
           ) : (
-            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+            <CheckCircle2 className="h-3.5 w-3.5 text-neutral-700" />
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 font-medium text-slate-300">
-          <Terminal className="h-3 w-3 text-slate-500" />
+        <div className="flex items-center gap-1.5 font-medium text-neutral-700">
+          <Terminal className="h-3 w-3 text-neutral-400" />
           <span>{tool.name}</span>
         </div>
 
         <span
           className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
             isRunning
-              ? "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-              : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+              ? "bg-neutral-100 text-neutral-600 border border-neutral-300"
+              : "bg-neutral-900 text-white border border-neutral-900"
           }`}
         >
           {STATUS_LABEL[tool.status]}
         </span>
 
         {tool.status === "result" && tool.bytes > 0 && (
-          <span className="ml-auto rounded bg-slate-800/80 px-1.5 py-0.5 text-[10px] text-slate-400 border border-slate-700/50">
+          <span className="ml-auto rounded bg-neutral-100 px-1.5 py-0.5 text-[10px] text-neutral-500 border border-neutral-200">
             {tool.bytes} bytes
           </span>
         )}
 
-        <div className="ml-auto flex items-center text-slate-500 hover:text-slate-300">
+        <div className="ml-auto flex items-center text-neutral-400 hover:text-neutral-700">
           {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
         </div>
       </button>
 
       {/* Expandable Accordion Details Content */}
       {isExpanded && (
-        <div className="border-t border-slate-800/80 bg-slate-950/60 p-3 text-xs font-mono space-y-2 text-slate-300">
-          <div className="flex items-center gap-2 text-slate-400 text-[11px]">
-            <Info className="h-3.5 w-3.5 text-indigo-400 shrink-0" />
-            <span>Execution details for <code className="text-indigo-300">{tool.name}</code></span>
+        <div className="border-t border-neutral-200 bg-neutral-50 p-3 text-xs font-mono space-y-2 text-neutral-700">
+          <div className="flex items-center gap-2 text-neutral-500 text-[11px]">
+            <Info className="h-3.5 w-3.5 text-neutral-400 shrink-0" />
+            <span>Execution details for <code className="text-neutral-900">{tool.name}</code></span>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 text-[11px] bg-slate-900/80 p-2.5 rounded border border-slate-800/80">
+          <div className="grid grid-cols-2 gap-2 text-[11px] bg-white p-2.5 rounded border border-neutral-200">
             <div>
-              <span className="text-slate-500 block text-[10px] uppercase">Status</span>
-              <span className={isRunning ? "text-amber-400 font-semibold" : "text-emerald-400 font-semibold"}>
+              <span className="text-neutral-400 block text-[10px] uppercase">Status</span>
+              <span className={isRunning ? "text-neutral-600 font-semibold" : "text-neutral-900 font-semibold"}>
                 {isRunning ? "Running in progress..." : "Completed successfully"}
               </span>
             </div>
             <div>
-              <span className="text-slate-500 block text-[10px] uppercase">Data Returned</span>
-              <span className="text-slate-200 flex items-center gap-1">
-                <HardDrive className="h-3 w-3 text-slate-400" />
+              <span className="text-neutral-400 block text-[10px] uppercase">Data Returned</span>
+              <span className="text-neutral-700 flex items-center gap-1">
+                <HardDrive className="h-3 w-3 text-neutral-400" />
                 {formatBytes(tool.bytes)}
               </span>
             </div>

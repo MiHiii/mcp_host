@@ -1,31 +1,27 @@
-# Debug Report - FEAT-00001 Step 1
+# Bug Report — /fix
 
-## Bug Report
+## Symptom
+Trong response có trả về message (final text) nhưng không render lên giao diện sau khi stream kết thúc.
 
-### Symptom
+## Repro Steps
+1. Mở web UI (`web/`).
+2. Gửi một prompt.
+3. Quan sát công cụ chạy (tool events hiển thị), nhưng câu trả lời cuối của agent không xuất hiện thành bubble sau khi streaming xong.
 
-The Step 1 verification command removed `google.golang.org/genai` immediately after adding it, causing the dependency-baseline verification to fail.
+## Root Cause
+- Backend (`internal/server/server.go:174`) gửi câu trả lời cuối trong sự kiện SSE `final`: `{"text": answer}`.
+- Client hook `web/hooks/useChatThreads.ts` trong vòng lặp `send()` chỉ gom text từ sự kiện `stream` loại `text` (`evt.data.type === "text"`), và **bỏ qua text từ sự kiện `final`**.
+- Khi stream chỉ emit `tool` (stream) + `final` (text), biến `assistantText` rỗng → assistant message không được append vào thread store → không render bubble.
 
-### Repro Steps
+## Fix
+- File: `web/hooks/useChatThreads.ts`
+- Thay đổi: gom `evt.text` từ sự kiện `final` thành `assistantText` (final là nguồn chính xác/quyền lực); vẫn cộng dồn text từ `stream`/`text` cho trường hợp streaming từng phần.
 
-1. Run `go get google.golang.org/genai@latest`.
-2. Run `go mod tidy` while no package imports the SDK.
-3. Inspect `go.mod`; the SDK requirement is absent.
+## Regression Protection
+- Verification bằng typecheck + lint + test suite (existing) sau khi đổi logic gom text.
+- (Flight) chờ thêm hook test nếu cần.
 
-### Root Cause
-
-`go mod tidy` removes module requirements that are not reachable from source imports. The approved bootstrap scope prohibits a Gemini provider import, so the original plan's requirement to retain the SDK and run `go mod tidy` in the same step was contradictory.
-
-### Fix
-
-Revise Step 1 to retain the approved direct dependency baseline and verify the resolved module with `go list -m google.golang.org/genai`; do not run `go mod tidy` until a task introduces an SDK import.
-
-### Regression Protection
-
-The revised plan explicitly documents why tidy is intentionally deferred and verifies the exact retained SDK module during Step 1.
-
-### Verification
-
-- Command: `go get google.golang.org/genai@latest; go list -m google.golang.org/genai`
-- Expected: the resolved SDK module and version are listed.
-- Result: NOT RUN; revised plan requires approval before build resumes.
+## Verification
+- Command: `npx tsc --noEmit`, `npx eslint hooks/useChatThreads.ts`, `npx vitest run`
+- Expected: tất cả PASS
+- Result: PASS (typecheck + lint + 56 tests/6 files)

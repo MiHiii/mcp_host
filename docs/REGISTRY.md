@@ -21,7 +21,7 @@
 | FEAT-00013 | internal/runner per-request runner: MCP lifecycle, agent loop, event mapping, cancel | P2 | S2 | ✅ | ✅ | ✅ | DONE |
 | FEAT-00014 | cmd/gateway entrypoint: config wiring, :8080 listen, health, docs | P2 | S2 | ✅ | ✅ | ✅ | DONE |
 | FEAT-00015 | Next.js UI + server-side token proxy (BFF fetch-stream SSE relay, web/ workspace) | P2 | S2 | ✅ | ✅ | ✅ | DONE |
-| FEAT-00021 | Multi-thread chat sessions + history cache + input-token reduction | P1 | S3 | ⬜ | ⬜ | ⬜ | BACKLOG |
+| FEAT-00021 | Multi-thread chat sessions + history cache + input-token reduction | P1 | S3 | ✅ | ⬜ | ⬜ | IN PROGRESS |
 | FEAT-00009 | Additional LLM providers and MCP server profiles | P2 | S2 | ⬜ | ⬜ | ⬜ | DEFERRED |
 
 ---
@@ -113,20 +113,19 @@ FEAT-00023 at 8 is the max-legal single unit).
 are all ≤ 8 points apiece; parent (19) is intentionally a tracking group, not a
 single work unit. Dependencies satisfied (FEAT-00008 DONE).
 
-## DoR — FEAT-00021 (2026-08-07, PM) — provisional, NOT yet PASS
+## DoR — FEAT-00021 (2026-08-07, PM) — re-checked after BA + Architect
 
 - [x] 5-digit ID present: `FEAT-00021` (parent) + FEAT-00022..00025
-- [ ] Linked to REQ/FEAT reference: **pending** — tied to FEAT-00015 Out-of-Scope note + user request; needs TDD U-IDs + BA AC mapped
-- [ ] BA spec + Acceptance Criteria completed: **pending** — expected `docs/specs/api/web-ui-threads.md` + AC (thread CRUD, compaction, token-budget)
-- [ ] Priority confirmed: ✅ P1 (S3)
-- [ ] Estimate ≤ 8: ✅ parent 21 groomed to 5/8/5/3 (each ≤ 8)
-- [ ] No unresolved dependencies: ✅ depends on FEAT-00015 (DONE) + frozen `/v1/chat` (unchanged)
-- [ ] Design approval obtained: **pending** — MC U-IDs + ADR (e.g. ADR-0010 client-side thread cache & compaction strategy) required before Sprint entry
+- [x] Linked to REQ/FEAT reference: `docs/tdd/FEAT-00021_thread_cache_compaction_tdd.md` §6 (U1–U10) + `docs/specs/api/ac/FEAT-00021.md` (AC-1..AC-10)
+- [x] BA spec + Acceptance Criteria completed: `docs/specs/api/web-threads.md` (thread model, compaction rule, out-of-scope) + `docs/specs/api/ac/FEAT-00021.md`
+- [x] Priority confirmed: ✅ P1 (S3)
+- [x] Estimate ≤ 8: ✅ parent 21 groomed to 5/8/5/3 (each ≤ 8)
+- [x] No unresolved dependencies: ✅ depends on FEAT-00015 (DONE) + frozen `/v1/chat` (unchanged)
+- [x] Design approval obtained: ✅ TDD `FEAT-00021_thread_cache_compaction_tdd.md` + `ADR-0010` (client-thread cache & compaction)
 
-**DoR verdict: ❌ (4/7 → NOT READY)** — IDs, priority, estimate, and dependency are set;
-missing spec/AC, TDD/ADR design, and REQ link. Shall remain **BACKLOG** until `/ba`
-writes the thread spec/AC and `/architect` produces a TDD + ADR, then **re-run DoR**
-before moving to SPRINT BACKLOG.
+**DoR verdict: PASS (7/7 ✅)** — FEAT-00021 is Ready to enter the Sprint. Sub-tasks are
+all ≤ 8 points apiece; parent (21) is a tracking group. Dependencies satisfied
+(FEAT-00015 DONE, gateway frozen). Next: `/plan FEAT-00021` (APROVED) → `/build`.
 
 ## Registered via /pm registry
 

@@ -14,14 +14,14 @@ export function MessageBubble({ text, role = "assistant", timestamp }: MessageBu
       <div className="flex justify-end gap-3 my-3 group">
         <div className="flex max-w-[85%] flex-col items-end">
           <div className="flex items-center gap-2 mb-1">
-            {timestamp && <span className="text-[10px] text-slate-400 font-mono">{timestamp}</span>}
-            <span className="text-xs font-medium text-slate-300">You</span>
+            {timestamp && <span className="text-[10px] text-neutral-400 font-mono">{timestamp}</span>}
+            <span className="text-xs font-medium text-neutral-500">You</span>
           </div>
-          <div className="rounded-2xl rounded-tr-xs bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm text-white shadow-md shadow-indigo-950/30 font-sans leading-relaxed whitespace-pre-wrap border border-indigo-500/20">
+          <div className="rounded-2xl rounded-tr-xs bg-neutral-900 px-4 py-3 text-sm text-white shadow-sm font-sans leading-relaxed whitespace-pre-wrap">
             {text}
           </div>
         </div>
-        <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white shadow-md shadow-indigo-950/50 text-xs font-bold">
+        <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-neutral-900 text-white shadow-sm text-xs font-bold">
           <User className="h-4 w-4" />
         </div>
       </div>
@@ -30,15 +30,15 @@ export function MessageBubble({ text, role = "assistant", timestamp }: MessageBu
 
   return (
     <div className="flex justify-start gap-3 my-3 group">
-      <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-gradient-to-tr from-cyan-600 to-indigo-600 text-white shadow-md shadow-cyan-950/50 text-xs font-bold">
+      <div className="flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full bg-white border border-neutral-200 text-neutral-900 shadow-sm text-xs font-bold">
         <Bot className="h-4 w-4" />
       </div>
       <div className="flex max-w-[90%] flex-col items-start min-w-0">
         <div className="flex items-center gap-2 mb-1">
-          <span className="text-xs font-medium text-slate-300">MCP Agent</span>
-          {timestamp && <span className="text-[10px] text-slate-400 font-mono">{timestamp}</span>}
+          <span className="text-xs font-medium text-neutral-500">MCP Agent</span>
+          {timestamp && <span className="text-[10px] text-neutral-400 font-mono">{timestamp}</span>}
         </div>
-        <div className="w-full rounded-2xl rounded-tl-xs bg-slate-900/90 px-4 py-3.5 text-slate-200 shadow-xl shadow-slate-950/50 border border-slate-800/80 backdrop-blur-sm overflow-hidden">
+        <div className="w-full rounded-2xl rounded-tl-xs bg-neutral-100 px-4 py-3.5 text-neutral-900 shadow-sm border border-neutral-200 overflow-hidden">
           <MarkdownRenderer content={text} />
         </div>
       </div>
