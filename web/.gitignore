@@ -1,0 +1,17 @@
+# Local secrets — never commit real credentials
+.env
+.env.local
+
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+
+# Misc
+next-env.d.ts
+
+# Coverage & temp
+coverage/
+*.tsbuildinfo

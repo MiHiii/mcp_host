@@ -3,7 +3,7 @@
 **Phase:** `/think` (Clarify) — Flow 1 "New Feature"
 **Task ID:** FEAT-00015
 **Date:** 2026-08-07
-**Status:** Clarified (decisions locked by user) → next: `/architect design FEAT-00015`
+**Status:** Clarified → Design done (TDD + ADRs 0007–0009) → next: `/ba spec`
 
 ## Goal
 
@@ -41,7 +41,18 @@ authenticated `POST /v1/chat` SSE endpoint, plus a server-side token proxy so th
 - Token never in bundle (STRIDE-verified).
 - Gateway contract unchanged; works against existing `POST /v1/chat`.
 
+## Architecture design required?
+
+**Yes.** Per GEMINI.md Core Commandment 6 ("≥3 tables **hoặc ≥2 layers**"), this feature
+spans ≥2 layers (`web/` Next.js UI → server-side proxy route → Go gateway). Durable
+decisions (BFF proxy pattern, SSE relay, TS toolchain in a Go repo, CI gate) warrant a
+TDD + ADR from `/architect` before any `/plan`.
+
 ## Recommendation
 
-**Approved.** Proceed to `/architect design FEAT-00015` to produce TDD + ADR for the
-`web/` workspace, the fetch-stream proxy route, TS toolchain, and CI gate. No code until `/plan` APPROVED.
+**Approved.** Design delivered 2026-08-07:
+- TDD: `docs/tdd/FEAT-00015_nextjs_ui_proxy_tdd.md` (U1–U9)
+- ADR-0007 Next.js web workspace, ADR-0008 BFF fetch-stream SSE proxy,
+  ADR-0009 `web/` CI gate.
+
+Next per Flow 1: `/ba spec` + `/ba ac FEAT-00015` (Specify phase). No code until `/plan` APPROVED.

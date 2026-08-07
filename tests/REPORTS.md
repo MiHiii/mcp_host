@@ -249,3 +249,40 @@
 | Secret handling | ✅ no secrets in code, config, logs, or events |
 
 **Decision:** **QC APPROVE.** FEAT-00008 + sub-tasks FEAT-00010..00014 signed off. No blockers remaining.
+
+## FEAT-00015 - Next.js UI + Server-Side Token Proxy
+
+**Executed:** 2026-08-07 | **By:** Tester + Dev | **Environment:** Local (Node v24, Go 1.26.5, gateway on :8080, next dev on :3000)
+
+### web/ gate suite (typecheck / lint / test / build / audit:token)
+
+| ID | Scenario | Status | Evidence |
+|---|---|---|---|
+| (web unit) | TypeScript strict typecheck | PASS | `npm run typecheck` exit 0 |
+| (web unit) | ESLint (Next core-web-vitals + TS) | PASS | `npm run lint` exit 0 |
+| (web unit) | Vitest unit suite | PASS | 37 tests, 4 files (proxy 14, parse 10, route 8, components 5) |
+| (web unit) | `next build` production | PASS | `npm run build` exit 0 |
+| (web gate) | Token-absence audit of client artifacts | PASS | `npm run audit:token` clean on `.next/static` + SSR HTML (U2/AC-2) |
+
+> Test IDs (TEST-xxxxx) for the manual scenarios below are to be registered by /test
+> in the REGISTRY during the formal sign-off pass; the web automated gates are tracked
+> by their owning sub-task codes (FEAT-00016..00020) per this build log.
+
+### Live end-to-end against real gateway
+
+| Scenario | Status | Evidence |
+|---|---|---|
+| POST /api/chat relays SSE stream (U1/AC-1) | PASS | `event: start` -> `event: final` via `curl -N` |
+| Streaming headers (U5/AC-6) | PASS | `text/event-stream`, `no-cache`, `x-accel-buffering: no` |
+| Client abort propagates upstream (U6/AC-5) | PASS | route test asserts `init.signal === req.signal` + aborted signal |
+
+### Spec-compliance audit (QC scope)
+
+| Check | Status | Evidence |
+|---|---|---|
+| Go tree untouched | PASS | no cmd/internal changes; Go gates green |
+| No EventSource / token in client | PASS | hook uses fetch + ReadableStream reader; token server-only |
+| No Blocker / unaddressed Major | PASS | none found |
+| Secret handling | PASS | `.env` git-ignored; `.env.example` placeholders only |
+
+**Result:** FEAT-00015 gates + live E2E passed. Remaining formal sign-off: /qc.
