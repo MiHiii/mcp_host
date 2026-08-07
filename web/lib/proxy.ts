@@ -8,7 +8,7 @@ const PLACEHOLDER = "replace-me-placeholder";
 export function loadProxyConfig(
   env: Record<string, string | undefined> = process.env
 ): ProxyConfig | null {
-  const gatewayUrl = env.GATEWAY_URL?.trim();
+  const gatewayUrl = env.?.trim();
   const token = env.GATEWAY_TOKEN?.trim();
   if (!gatewayUrl || !token || token === PLACEHOLDER) return null;
   return { gatewayUrl, token };

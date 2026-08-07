@@ -21,6 +21,7 @@
 | FEAT-00013 | internal/runner per-request runner: MCP lifecycle, agent loop, event mapping, cancel | P2 | S2 | ✅ | ✅ | ✅ | DONE |
 | FEAT-00014 | cmd/gateway entrypoint: config wiring, :8080 listen, health, docs | P2 | S2 | ✅ | ✅ | ✅ | DONE |
 | FEAT-00015 | Next.js UI + server-side token proxy (BFF fetch-stream SSE relay, web/ workspace) | P2 | S2 | ✅ | ✅ | ✅ | DONE |
+| FEAT-00021 | Multi-thread chat sessions + history cache + input-token reduction | P1 | S3 | ⬜ | ⬜ | ⬜ | BACKLOG |
 | FEAT-00009 | Additional LLM providers and MCP server profiles | P2 | S2 | ⬜ | ⬜ | ⬜ | DEFERRED |
 
 ---
@@ -53,6 +54,33 @@
 **Total: 19 story points** (parent = 3+3+5+5+3). Broken down; each sub-task ≤ 8 (DoR
 compliant).
 
+## FEAT-00021 Sub-Task Breakdown (multi-thread chat + history cache + token reduction)
+
+> Registered 2026-08-07 by PM per `/pm registry` (user request: conversations are
+> "rời rạc" / fragmented and token-heavy today). Follow-up to FEAT-00015 ("Chat
+> history persistence / multi-thread management" was Out of Scope MVP).
+>
+> Problem today: `POST /v1/chat` accepts only `{prompt}` (frozen contract, ADR-00003),
+> so every message is an independent, context-free call. The client drops all prior
+> turns — nothing is cached and every prompt re-pays the full input-token cost of the
+> surrounding context the gateway would need.
+>
+> Goal (P1, S3): per-thread conversation history, cached client-side; on a continued
+> thread the UI sends a compacted context (recent turns + summarized older context)
+> to reduce input tokens while preserving continuity. Scope locked to single-device,
+> client-side cache (no server DB); gateway contract UNCHANGED (no Go change).
+
+| ID | Title | Owner | Dependencies | Priority | Points |
+|----|-------|-------|--------------|----------|:------:|
+| FEAT-00021 | Multi-thread chat sessions + history cache + input-token reduction (parent) | PM | FEAT-00015 (DONE) | P1 | (Σ below) |
+| FEAT-00022 | **Thread store & lifecycle**: `Thread` model, create/switch/archive/back, per-thread message list in local storage (IndexedDB/localStorage), rehydrate last thread on reload | DEV | FEAT-00015 | P1 | 5 |
+| FEAT-00023 | **Context cache & compaction**: store per-thread message history; on continuation build a compacted prompt (conversation window + `/summarize` seam) so re-sent input-token load drops, not grows; map cached events → text | DEV | FEAT-00022 | P1 | 8 |
+| FEAT-00024 | **Thread UI**: thread list rail + active-thread switcher + per-thread "clear/archive" + view cached history vs live stream | DEV | FEAT-00022, FEAT-00023 | P1 | 5 |
+| FEAT-00025 | **Hardening**: cache eviction/limit (e.g. N threads / M events), token-budget guard, tests (persistence, compaction, abort across switch), docs, security check (no secrets cached) | DEV | FEAT-00022, FEAT-00023, FEAT-00024 | P1 | 3 |
+
+**Total: 21 story points** (parent = 5+8+5+3). Each sub-task ≤ 8 (DoR compliant;
+FEAT-00023 at 8 is the max-legal single unit).
+
 ## Global Status
 
 **DONE — FEAT-00008** completed the full Flow 1 lifecycle on 2026-08-07: Design (TDD + ADRs 00002–00006) → BA spec → DoR PASS → `/plan` APPROVED → Implement (FEAT-00010..00014) → Test (TEST-00009, GW1–GW9 9/9 PASS) → QC sign-off (no blockers). `go build`/`go vet`/`go test ./...` all green. CLI (`cmd/server`) unchanged. Follow-ups: FEAT-00015 (Next.js UI, **activated → SPRINT BACKLOG 2026-08-07**), token rotation, rate limiting, pooled MCP transport.
@@ -84,3 +112,24 @@ compliant).
 **DoR verdict: PASS (8/8 ✅)** — FEAT-00015 is Ready to enter the Sprint. Sub-tasks
 are all ≤ 8 points apiece; parent (19) is intentionally a tracking group, not a
 single work unit. Dependencies satisfied (FEAT-00008 DONE).
+
+## DoR — FEAT-00021 (2026-08-07, PM) — provisional, NOT yet PASS
+
+- [x] 5-digit ID present: `FEAT-00021` (parent) + FEAT-00022..00025
+- [ ] Linked to REQ/FEAT reference: **pending** — tied to FEAT-00015 Out-of-Scope note + user request; needs TDD U-IDs + BA AC mapped
+- [ ] BA spec + Acceptance Criteria completed: **pending** — expected `docs/specs/api/web-ui-threads.md` + AC (thread CRUD, compaction, token-budget)
+- [ ] Priority confirmed: ✅ P1 (S3)
+- [ ] Estimate ≤ 8: ✅ parent 21 groomed to 5/8/5/3 (each ≤ 8)
+- [ ] No unresolved dependencies: ✅ depends on FEAT-00015 (DONE) + frozen `/v1/chat` (unchanged)
+- [ ] Design approval obtained: **pending** — MC U-IDs + ADR (e.g. ADR-0010 client-side thread cache & compaction strategy) required before Sprint entry
+
+**DoR verdict: ❌ (4/7 → NOT READY)** — IDs, priority, estimate, and dependency are set;
+missing spec/AC, TDD/ADR design, and REQ link. Shall remain **BACKLOG** until `/ba`
+writes the thread spec/AC and `/architect` produces a TDD + ADR, then **re-run DoR**
+before moving to SPRINT BACKLOG.
+
+## Registered via /pm registry
+
+Parent **FEAT-00021** + sub-tasks **FEAT-00022..00025** added to the Registry
+(2026-08-07). Next steps per Flow 1: `/think` + `/ba spec` (thread CRUD + compaction
+AC) → `/architect design` (compaction strategy + ADR-0010) → DoR re-check → `/plan`.
