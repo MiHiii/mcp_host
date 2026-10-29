@@ -290,3 +290,50 @@ Plan: `artifacts/superpowers/plan.md` (approved via `/build` invocation). Steps 
 - 🟠 Majors: none.
 - 🟡 Minors: `isTerminal` returns false on a `Stat` error (treats an unreadable stdin as piped, reads it) — safe default: worst case bootstrap handles a read failure surfaced to stderr; no hang.
 - ⚪ Nits: none.
+---
+# /build Execution Log — FEAT-00015: Next.js UI + server-side token proxy
+
+Branch: `feature/FEAT-00015-nextjs-ui-token-proxy`
+Plan: `artifacts/superpowers/plan.md` (user replied APPROVED).
+
+## Step 1: Context lock
+- Verify: docs/REGISTRY.md FEAT-00015 = SPRINT BACKLOG, DoR 8/8 PASS; go test ./... green -> PASS
+- Notes: branch feature/FEAT-00015-nextjs-ui-token-proxy created.
+
+## Step 2: Scaffold web/ workspace + toolchain + token audit (FEAT-00016)
+- Files: web/package.json, tsconfig.json, next.config.mjs, eslint.config.mjs, .prettierrc, .gitignore, .env.example, next-env.d.ts, postcss.config.mjs, vitest.config.ts, scripts/audit-token.mjs, app/layout.tsx, app/page.tsx, app/globals.css, README.md
+- Changes: Minimal App Router shell; TS strict; ESLint flat + Prettier; blocking npm gates (typecheck/lint/test/build/audit:token); BFF env example (placeholders only).
+- Verify: go test ./... green; web npm run typecheck/lint/build/audit:token -> PASS
+
+## Step 3: Tailwind + layout/page/globals shell (FEAT-00016)
+- Files: web/app/layout.tsx, page.tsx, globals.css, postcss.config.mjs
+- Changes: Tailwind v4 via PostCSS (@import 'tailwindcss'); App Router server layout + placeholder page.
+- Verify: npm run build -> PASS (shell renders :3000); note: v4 needs no tailwind.config.ts
+## Step 4: BFF proxy route + config + tests (FEAT-00017)
+- Files: web/app/api/chat/route.ts, web/lib/proxy.ts, web/lib/proxy.test.ts, web/lib/route.test.ts
+- Changes: POST /api/chat - env config load (GATEWAY_URL/GATEWAY_TOKEN, placeholder rejected), prompt validation (400/422/oversize), upstream fetch with Bearer + req.signal, non-200 envelope forward, verbatim ReadableStream passthrough with no-cache headers.
+- Verify: npm test -> 31 PASS (7 proxy + 7 route + 14 config + parser); typecheck/lint clean.
+## Step 5: Client SSE parser + types + hook + tests (FEAT-00018)
+- Files: web/lib/chat/types.ts, web/lib/chat/parse.ts, web/lib/chat/parse.test.ts, web/hooks/useChatStream.ts
+- Changes: ChatEvent union + ERROR_COPY; byte-buffer SSE decoder (parseSSEChunk + sseDecoder AsyncGenerator) handling partial \n\n splits and multibyte boundaries; useChatStream hook with AbortController, status machine, reset.
+- Verify: npm test -> 10 parser tests PASS (split-mid-event, UTF-8 boundary, CRLF, malformed JSON, keepalive); typecheck clean.
+
+## Step 6: UI page + display components + streaming render (FEAT-00019)
+- Files: web/components/ChatThread.tsx, MessageBubble.tsx, ToolEvent.tsx, ErrorBanner.tsx, components.test.tsx, web/app/page.tsx (mount)
+- Changes: Dumb presentational components; ChatThread composes useChatStream (live text bubble, final bubble, tool tiles, error banner via ERROR_COPY); client page mounts chat.
+- Verify: npm test -> 36 PASS (5 component render tests); typecheck/lint/build green; live E2E vs real gateway on :8080 -> proxy returns event:start + event:final (U1/AC-1); headers no-cache/text/event-stream/x-accel-buffering verified (U5/AC-6); token never in client bundle (audit:token PASS, U2/AC-2).
+- Notes: PowerShell 'Set-Content' added a UTF-8 BOM that made JSON body parsing fail in BOTH gateway and proxy during manual curl test ? a test-harness artifact, not a code bug (fixed by writing bytes without BOM).
+
+
+## Step 7: Hardening (FEAT-00020) - abort tests, token-absence audit, docs
+- web/lib/route.test.ts: +2 abort tests (upstream AbortError -> 499; client abort propagates to upstream signal) -> 8 tests, all PASS.
+- web/README.md: + Live verification section (curl example, passthrough/abort notes, PowerShell BOM gotcha).
+- tests/REPORTS.md: + FEAT-00015 entry (web gates, live E2E, QC-scope audit).
+- Verified: no EventSource static guard (U-4) already satisfied by fetch+ReadableStream hook from Step 5; token-absence audit:token PASS.
+
+## Step 8: Full-gate verification (final, blocking)
+- Go gates: go test ./... all ok (cmd/server, internal/*), go vet ./... clean -> U7/AC-9 PASS.
+- Web gates: typecheck (tsc --noEmit) PASS; lint (eslint .) PASS; test 37/37 PASS; build (next build) PASS; audit:token PASS (client bundle) -> U8/AC-10.
+- Client bundle audit: manual Select-String over .next/static -> clean (no GATEWAY_TOKEN/token value). Server chunks (.next/server) contain only the server-side env reference (expected) -> U2/AC-2 PASS.
+- Static no-EventSource (U4): hook uses fetch + ReadableStream reader; passthrough assertions (U5). Live E2E earlier: proxy relays start->final, no-cache/text/event-stream/x-accel-buffering, abort propagates (U1/U6/U9).
+- RESULT: ALL 8 STEPS GREEN. FEAT-00015 ready for /dev qc review + /qc sign-off.

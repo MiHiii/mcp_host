@@ -9,6 +9,8 @@ node_modules/
 # Build artifacts
 dist/
 build/
+bin/
+*.exe
 
 # Local workflow artifacts (generated outputs)
 artifacts/

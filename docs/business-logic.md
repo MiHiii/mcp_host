@@ -183,3 +183,63 @@ The host enforces the following per prompt:
   Next.js route handler / proxy (BFF) that owns the token and uses
   `fetch` + `ReadableStream`, never `EventSource` directly from the browser.
 - Tracked as follow-up **FEAT-XXXXX (Next.js UI)** in Sprint 2.
+
+---
+
+## 12. Web UI User Stories (FEAT-00015)
+
+> Scope: additive Next.js UI (`web/`) + server-side token proxy (ADR-0007/0008/0009).
+> The gateway contract and all Go code are unchanged.
+
+- **As a user,** I want to type a prompt and watch the agent answer stream live,
+  so that I can chat with the MCP host from a browser.
+- **As a user,** I want to see tool events and errors while the agent works, so
+  that I understand progress and can react to failures.
+- **As an operator,** I want the `GATEWAY_API_TOKEN` to remain server-side, so
+  that it is never shipped to browsers (`ADR-0008`).
+- **As an operator,** I want the UI build linted/type-checked/tested in CI, so
+  that a second toolchain does not lower the quality bar (`ADR-0009`).
+
+## 13. Web UI Business Rules (FEAT-00015)
+
+### 13.1 Proxy & token (ADR-0008)
+
+- `W1`: The browser calls only same-origin `POST /api/chat`; it never calls
+  `/v1/chat` and never sends an `Authorization` header.
+- `W2`: `app/api/chat/route.ts` (server-only) reads `GATEWAY_TOKEN`/`GATEWAY_URL`
+  from `process.env`; neither may use a `NEXT_PUBLIC_*` prefix.
+- `W3`: The proxy forwards the prompt to the gateway with `Authorization: Bearer
+  <token>` and relays the SSE stream as a verbatim `ReadableStream` (no
+  `resp.json()`/`resp.text()` buffering).
+- `W4`: Non-`200` upstream responses are forwarded with their status and the
+  sanitized gateway JSON envelope; proxy misconfiguration → `500 INTERNAL_ERROR`.
+- `W5`: The proxy forwards `req.signal` upstream so client abort cancels the
+  gateway request (and thus the MCP child).
+
+### 13.2 Client streaming (ADR-0003)
+
+- `W6`: The browser parses SSE via `fetch` + `ReadableStream`; `EventSource` is
+  NOT used (cannot send POST/headers).
+- `W7`: The UI renders `start`, `stream` (text/tool), and exactly one terminal
+  `final` or `error`; `id` frames are keep-alive only.
+- `W8`: Streamed `error` messages are displayed sanitized; the token never
+  appears in any payload or log.
+
+### 13.3 Scope (MVP)
+
+- `W9`: UI is open-access (no user auth); scope is single chat thread + tool +
+  error display. History/persistence/multi-thread are follow-ups.
+
+## 14. Web UI Acceptance Criteria — FEAT-00015 (U1..U9)
+
+| ID | Criterion |
+|----|-----------|
+| U1 | `POST /api/chat {prompt}` → UI renders `start`, tool `stream`, and `final` live as received. |
+| U2 | Token (`GATEWAY_TOKEN`) never present in any client artifact (JS, source maps, SSR HTML). |
+| U3 | Streamed `error` renders an error banner; terminal `final` shows the answer. |
+| U4 | Browser uses `fetch` + `ReadableStream` (no `EventSource`). |
+| U5 | Proxy is passthrough (no buffering; returns `resp.body`). |
+| U6 | Client abort aborts the upstream gateway request via `req.signal`. |
+| U7 | Go unchanged: `go test ./...` and `go vet ./...` stay green. |
+| U8 | `web/` gate green: `npm run lint`, `npm run typecheck`, `npm run test`, `npm run build` in CI. |
+| U9 | No CORS: browser → Next.js is same-origin `/api/chat`. |

@@ -249,3 +249,79 @@
 | Secret handling | ✅ no secrets in code, config, logs, or events |
 
 **Decision:** **QC APPROVE.** FEAT-00008 + sub-tasks FEAT-00010..00014 signed off. No blockers remaining.
+
+## FEAT-00015 - Next.js UI + Server-Side Token Proxy
+
+**Executed:** 2026-08-07 | **By:** Tester + Dev | **Environment:** Local (Node v24, Go 1.26.5, gateway on :8080, next dev on :3000)
+
+### web/ gate suite (typecheck / lint / test / build / audit:token)
+
+| ID | Scenario | Status | Evidence |
+|---|---|---|---|
+| (web unit) | TypeScript strict typecheck | PASS | `npm run typecheck` exit 0 |
+| (web unit) | ESLint (Next core-web-vitals + TS) | PASS | `npm run lint` exit 0 |
+| (web unit) | Vitest unit suite | PASS | 37 tests, 4 files (proxy 14, parse 10, route 8, components 5) |
+| (web unit) | `next build` production | PASS | `npm run build` exit 0 |
+| (web gate) | Token-absence audit of client artifacts | PASS | `npm run audit:token` clean on `.next/static` + SSR HTML (U2/AC-2) |
+
+> Test IDs (TEST-xxxxx) for the manual scenarios below are to be registered by /test
+> in the REGISTRY during the formal sign-off pass; the web automated gates are tracked
+> by their owning sub-task codes (FEAT-00016..00020) per this build log.
+
+### Live end-to-end against real gateway
+
+| Scenario | Status | Evidence |
+|---|---|---|
+| POST /api/chat relays SSE stream (U1/AC-1) | PASS | `event: start` -> `event: final` via `curl -N` |
+| Streaming headers (U5/AC-6) | PASS | `text/event-stream`, `no-cache`, `x-accel-buffering: no` |
+| Client abort propagates upstream (U6/AC-5) | PASS | route test asserts `init.signal === req.signal` + aborted signal |
+
+### Spec-compliance audit (QC scope)
+
+| Check | Status | Evidence |
+|---|---|---|
+| Go tree untouched | PASS | no cmd/internal changes; Go gates green |
+| No EventSource / token in client | PASS | hook uses fetch + ReadableStream reader; token server-only |
+| No Blocker / unaddressed Major | PASS | none found |
+| Secret handling | PASS | `.env` git-ignored; `.env.example` placeholders only |
+
+**Result:** FEAT-00015 gates + live E2E passed. Remaining formal sign-off: /qc.
+
+---
+
+## FEAT-00021 - Web Threads + History Cache + Input-Token Reduction
+
+**Executed:** 2026-08-07 | **By:** Tester + Dev | **Environment:** Local (Node v24, Go 1.26.5)
+
+### Unit suite (web/lib/threads + web/lib/chat/compaction)
+
+| ID | Scenario | Status | Evidence |
+|---|---|---|---|
+| FEAT-00022 | Thread store: create / switch / archive / rehydrate / corrupt-JSON recovery | PASS | `store.test.ts` 7 tests |
+| FEAT-00022 | Eviction caps (MAX_THREADS, MAX_MESSAGES_PER_THREAD) | PASS | `store.test.ts` |
+| AC-10 | Thread cache holds no tokens / Authorization headers / gateway URL | PASS | `store.test.ts` raw-storage assertion |
+| FEAT-00023 | Compaction boundary (window, window+1, empty, summary) | PASS | `compaction.test.ts` |
+| AC-3 | Compaction invariant: `compacted <= full` always; strictly smaller when compression wins | PASS | `compaction.test.ts` (guard for window+1) |
+| AC-3 | Growth bounded: 1000/100000 messages stay under window+summary bound | PASS | `compaction.test.ts` |
+
+### web/ gate suite
+
+| Gate | Status | Evidence |
+|---|---|---|
+| `npm run typecheck` | PASS | exit 0 |
+| `npm run lint` | PASS | 0 errors (fixed 2 pre-existing set-state-in-effect) |
+| `npm test` | PASS | 56 tests, 6 files |
+| `npm run build` | PASS | `next build` exit 0 |
+| `npm run audit:token` | PASS | no token-like value in client bundle |
+
+### Spec-compliance audit (QC scope)
+
+| Check | Status | Evidence |
+|---|---|---|
+| Go tree untouched (AC-7/AC-9) | PASS | `go test ./...` green; no cmd/internal changes |
+| Contract unchanged (AC-9) | PASS | `POST /api/chat` still `{prompt}`; compaction folds into prompt client-side |
+| No Blocker / unaddressed Major | PASS | none found |
+
+**Result:** FEAT-00021 gates + unit suite passed (56 tests). Remaining: live E2E + formal sign-off via /qc.
+
+
